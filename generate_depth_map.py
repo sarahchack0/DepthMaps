@@ -54,7 +54,7 @@ while True:
 
 dict = pc.depth_dict
 
-filename = "ten_maps_example.pkl"
+filename = "training_data/ten_maps_example.pkl"
 # save dictionary as pickled file to access later
 with open(filename, 'wb') as f:
     pickled_dict = pickle.dump(dict, f)

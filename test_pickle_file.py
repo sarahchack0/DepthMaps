@@ -10,7 +10,7 @@ import pickle
 if __name__ == "__main__":
     unpickled_dict = {}
 
-    with open("pickled_dict.pkl", 'rb') as f:
+    with open("training_data/pickled_dict.pkl", 'rb') as f:
         unpickled_dict = pickle.load(f)
 
     for x in range(1, min(5, len(unpickled_dict))):
