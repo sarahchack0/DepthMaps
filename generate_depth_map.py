@@ -6,7 +6,7 @@ from pyvista import examples
 import pickle
 
 #dataset = examples.download_bunny_coarse()
-mesh = pv.read("Manny_closed_cleaned.ply")
+mesh = pv.read("meshes/Manny_closed_cleaned_decimated.ply")
 p = pv.Plotter()
 p.add_mesh(mesh, label='Clipped')
 
