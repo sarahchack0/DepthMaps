@@ -39,12 +39,18 @@ import cv2
 import re
 from sklearn.preprocessing import normalize
 from sklearn.preprocessing import minmax_scale
-IMG_WIDTH = int(1024/4)
-IMG_HEIGHT = int(768/4)
+# for large image
+
+# IMG_WIDTH = int(1024/4)
+# IMG_HEIGHT = int(768/4)
+
+# for small image
+
+IMG_WIDTH = 240
+IMG_HEIGHT = 240
 
 overall_max = -999
 overall_min = 999
-
 first = 0
 
 def loadDictData(pickled_dict_path):
@@ -60,20 +66,21 @@ def loadDictData(pickled_dict_path):
     pos_list = []
     depth_list = []
 
-    
-    for key in unpickled_dict:
-        tmp = unpickled_dict[key][1]
-        # start with filler values -999, so find max num
-        if np.max(tmp) > overall_max:
-          overall_max = np.max(tmp)
-        
-        tmp[tmp == -999] = 999
-
-        # changed to filler values 999, so find min num
-        if np.min(tmp) < overall_min:
-          overall_min = np.min(tmp)
-    print("overall min, ", overall_min)
-    print("overall max, ", overall_max)
+    # finding the overall min and max
+    # NOT IN USE NOW since normalization is just dividing by 1000
+    # for key in unpickled_dict:
+    #     tmp = unpickled_dict[key][1]
+    #     # start with filler values -999, so find max num
+    #     if np.max(tmp) > overall_max:
+    #       overall_max = np.max(tmp)
+    #
+    #     tmp[tmp == -999] = 999
+    #
+    #     # changed to filler values 999, so find min num
+    #     if np.min(tmp) < overall_min:
+    #       overall_min = np.min(tmp)
+    # print("overall min, ", overall_min)
+    # print("overall max, ", overall_max)
 
     for key in unpickled_dict:
         # save all camera positions to list (first entry in the list value in dictionary)
@@ -83,36 +90,45 @@ def loadDictData(pickled_dict_path):
                 temp.append(tuple_val)
         pos_list.append(temp)
         arr = unpickled_dict[key][1]
-      
-        #arr[arr == -999] = 999
+
+        # print image before normalize
+        if first == 0:
+            plt.imshow(arr)
+            plt.show()
+
         normed = NormalizeData(arr)
+        # print image after normalize
         if first == 0:
             plt.imshow(normed)
             plt.show()
-        #print((arr>0).sum())
-        img = cv2.resize(normed, (IMG_WIDTH, IMG_HEIGHT), interpolation = cv2.INTER_AREA)
-        if first == 0:
-            plt.imshow(img)
-            plt.show()
-        #print("before norm", img)
 
-        #normed = NormalizeData(img)
+        #######################
+        # For large image     #
+        #######################
+        # img = cv2.resize(normed, (IMG_WIDTH, IMG_HEIGHT), interpolation = cv2.INTER_AREA)
 
-        #print("min", np.min(normed))
-        #print("after norm", normed)
+        # print image after resize
+        # if first == 0:
+        #     plt.imshow(img)
+        #     plt.show()
+        #######################
+
+        #######################
+        # For small image     #
+        #######################
+        img = normed
+
+        #######################
 
         # replace any value over 1 with 2
-        if first == 0:
-            print(img)
+
         img[img < 0] = 2.0
 
+        # print image after filler values replaced by 2
         if first == 0:
             print(img)
             plt.imshow(img)
             plt.show()
-
-        #print("after replacing filler values", normed)
-        
 
         depth_list.append(img)
         first += 1
@@ -160,8 +176,6 @@ y = np.asarray(y)
 print('Data augmented')
 print(X.shape)
 print(y.shape)    
-
-
 
 # Split train and valid
 if MODE == 1:
