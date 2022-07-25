@@ -4,25 +4,40 @@ import matplotlib.pyplot as plt
 import pyvista as pv
 from pyvista import examples
 import pickle
+import os
+import pathlib
+import shutil
+
+parent_dir = pathlib.Path(__file__).parent.resolve()
+current_dir = "ImagesDir"
+
+path = os.path.join(parent_dir, current_dir)
+
+if os.path.exists(path):
+    shutil.rmtree(path)
+os.makedirs(path)
 
 #dataset = examples.download_bunny_coarse()
 mesh = pv.read("meshes/Manny_closed_cleaned_decimated.ply")
 p = pv.Plotter()
-p.add_mesh(mesh, label='Clipped', show_scalar_bar = False)
-print(p.window_size)
+p.window_size = [240, 240]
 p.remove_bounding_box()
+
+p.add_mesh(mesh, show_scalar_bar = False, color='gray')
+
+print(p.window_size)
 
 #     pass
 class PlotterControls:
     def __init__(self, p):
         self.p = p
         self.p.add_key_event("q", self.quit)
-        self.p.add_key_event("p", self.toggle_play)
+        #self.p.add_key_event("p", self.toggle_play)
+        self.p.track_click_position(callback=self.toggle_play, side='left')
         self.paused = False
         self.stop = False
 
         self.depth_dict_small = {}
-        self.depth_dict_large = {}
         self.pic_num = 0
 
     # Whenever 'q' is pressed, end program
@@ -32,22 +47,25 @@ class PlotterControls:
 
 
     # Whenever 'p' is pressed, location is saved if it is already not in dictionary
-    def toggle_play(self):
+    def toggle_play(self, a):
         self.pic_num += 1
         print(self.pic_num)
         print(self.p.camera_position)
-        self.paused = not self.paused
-        self.p.window_size = [1024, 768]
-        lst = [self.p.camera_position, self.p.get_image_depth(fill_value=-999)]
-        # save as dictionary entry, ex. {1: [cam position, depth map]}
-        self.depth_dict_large[self.pic_num] = lst
+
+        # self.paused = not self.paused
 
         self.p.window_size = [240, 240]
         lst = [self.p.camera_position, self.p.get_image_depth(fill_value=-999)]
         # save as dictionary entry, ex. {1: [cam position, depth map]}
         self.depth_dict_small[self.pic_num] = lst
 
-        self.p.window_size = [1024, 768]
+        title = str(self.pic_num) + ".svg"
+
+        current_path = os.path.join(path, title)
+
+
+        print(current_path)
+        self.p.save_graphic(current_path, title = title)
 
 
 pc = PlotterControls(p)
@@ -61,14 +79,11 @@ while True:
     elif pc.paused:
         p.show(auto_close=False, interactive_update=False)  # Blocking call, this also catches the key events
 
-dict_large = pc.depth_dict_large
+
 dict_small = pc.depth_dict_small
 
-filename_large = "training_data/dict1_large.pkl"
-filename_small = "training_data/dict1_small.pkl"
-# save dictionary as pickled file to access later
-with open(filename_large, 'wb') as f:
-    pickled_dict_large = pickle.dump(dict_large, f)
+filename_small = "training_data/testing_dict.pkl"
+
 
 with open(filename_small, 'wb') as f:
     pickled_dict_small = pickle.dump(dict_small, f)
