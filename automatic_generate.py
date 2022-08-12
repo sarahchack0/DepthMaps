@@ -11,6 +11,8 @@ import os
 import shutil
 import pickle
 import pyvistaqt as pvqt
+import random
+import copy
 
 head = pv.read("meshes/Manny_closed_cleaned_decimated.ply")
 
@@ -55,12 +57,55 @@ def angle_between_two_vectors(vector_1, vector_2):
 
     return angle
 
+def NormalizeData(data):
+    #return ((data - overall_min) / (overall_max - overall_min))
+    #return data
+    return data / -1000
+
+# convert images in dict to normalized
+def normalizeDepth(depth_map):
+
+    normed = NormalizeData(depth_map)
+    img = normed
+    img[img > .998] = 2.0
+
+    # return normalized depth map
+    return img
+
+def add_noise(original):
+    # shape is (240, 240)
+    # change 5% of values
+    # pick random number from 0 to 239
+    percent = .05
+    depth_map = copy.deepcopy(original)
+    changed = []
+
+    # add 5% random values
+    for i in range(int(depth_map.size * percent)):
+        x = random.randint(0, 239)
+        y = random.randint(0, 239)
+
+        if (x, y) not in changed:
+            depth_map[x][y] = depth_map[x][y] + np.random.normal(loc = .5, scale=.5)
+            changed.append((x,y))
+
+    # add 5% holes
+    for i in range(int(depth_map.size * percent)):
+        x = random.randint(0, 239)
+        y = random.randint(0, 239)
+        if (x, y) not in changed:
+            depth_map[x][y] = 0
+            changed.append((x, y))
+
+    return depth_map
+
 pic_num = 0
 depth_dict = {}
+noise_dict = {}
 
 # get pictures at each point and save in pickle file
 def take_images(mesh_sphere, radius):
-    global pic_num, depth_dict
+    global pic_num, depth_dict, noise_dict
 
     points = mesh_sphere.points
 
@@ -95,33 +140,41 @@ def take_images(mesh_sphere, radius):
         try:
             title = str(int(lat)) + " " + str(int(ud)) + " rad_" + str(radius) + ".svg"
         except:
-            title = str(pic_num) + ".svg"
+            title = str(pic_num) + " rad_" + str(radius) + ".svg"
             print("not possible")
         current_path = os.path.join(path, title)
 
         print(current_path)
         p.save_graphic(current_path, title=title)
 
-        lst = [p.camera_position, p.get_image_depth(fill_value=-999)]
+        pre_norm_depth = p.get_image_depth(fill_value=-999)
+        post_norm_depth = normalizeDepth(pre_norm_depth)
+        lst = [p.camera_position, post_norm_depth, lat, ud]
 
         depth_dict[pic_num] = lst
 
-        pic_num += 1
-        print(pic_num)
+        # add noise to the normalized depth map and save it as a separate entry
+        noise_depth = add_noise(post_norm_depth)
+        noise_lst = [p.camera_position, noise_depth, lat, ud]
 
+        noise_dict[pic_num] = noise_lst
+        pic_num += 1
+
+        print(pic_num)
 
 # make spheres
 
-sphere_500 = pv.Sphere(radius=500, start_theta=180, end_theta=360)
-trans_500 = sphere_500.translate(head.center, inplace=False)
+for x in range(400, 901, 25):
+    sphere = pv.Sphere(radius=x, start_theta=180, end_theta=360)
+    trans = sphere.translate(head.center, inplace=False)
 
-sphere_600 = pv.Sphere(radius=600, start_theta=180, end_theta=360)
-trans_600 = sphere_600.translate(head.center, inplace=False)
+    take_images(trans, x)
 
-take_images(trans_500, 500)
-#take_images(trans_600, 600)
-#p.show()
-
-filename = "training_data/testing_dict.pkl"
-with open(filename, 'wb') as f:
+norm_filename = "training_data/test_dict_normal.pkl"
+with open(norm_filename, 'wb') as f:
     pickled_dict_small = pickle.dump(depth_dict, f)
+
+noise_filename = "training_data/test_dict_noise.pkl"
+with open(noise_filename, 'wb') as f:
+    pickled_dict_small = pickle.dump(noise_dict, f)
+
